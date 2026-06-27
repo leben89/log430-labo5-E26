@@ -1,0 +1,48 @@
+name: Deploy Store Manager Labo 5
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: log430-labo5-E26-src
+
+      - name: Deploy Store Manager
+        run: |
+          set -e
+
+          DEPLOY_DIR="/home/runner/log430-labo5-deploy/log430-labo5-E26"
+
+          if [ -d "$DEPLOY_DIR" ]; then
+            cd "$DEPLOY_DIR"
+            docker-compose down --remove-orphans || true
+          fi
+
+          rm -rf "$DEPLOY_DIR"
+          mkdir -p "$DEPLOY_DIR"
+          cp -a "$GITHUB_WORKSPACE/log430-labo5-E26-src/." "$DEPLOY_DIR/"
+
+          cd "$DEPLOY_DIR"
+
+          cat > .env <<'EOF'
+          DB_HOST=mysql
+          DB_PORT=3306
+          DB_USER=labo05
+          DB_PASSWORD=labo05
+          DB_NAME=labo05_db
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          REDIS_DB=0
+          KAFKA_HOST="labo7-seulement!"
+          EOF
+
+          docker network create labo05-network 2>/dev/null || true
+          docker-compose up -d --build
