@@ -12,8 +12,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          path: log430-labo5-E26-src
 
       - name: Deploy Store Manager
         run: |
@@ -21,14 +19,10 @@ jobs:
 
           DEPLOY_DIR="/home/runner/log430-labo5-deploy/log430-labo5-E26"
 
-          if [ -d "$DEPLOY_DIR" ]; then
-            cd "$DEPLOY_DIR"
-            docker-compose down --remove-orphans || true
-          fi
+          docker network create labo05-network 2>/dev/null || true
 
-          rm -rf "$DEPLOY_DIR"
           mkdir -p "$DEPLOY_DIR"
-          cp -a "$GITHUB_WORKSPACE/log430-labo5-E26-src/." "$DEPLOY_DIR/"
+          cp -a "$GITHUB_WORKSPACE/." "$DEPLOY_DIR/"
 
           cd "$DEPLOY_DIR"
 
@@ -44,5 +38,5 @@ jobs:
           KAFKA_HOST="labo7-seulement!"
           EOF
 
-          docker network create labo05-network 2>/dev/null || true
+          docker-compose down --remove-orphans || true
           docker-compose up -d --build
