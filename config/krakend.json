@@ -25,11 +25,15 @@
     {
       "endpoint": "/store-manager-api/orders",
       "method": "POST",
-      "input_headers": ["*"],
+      "input_headers": [
+        "*"
+      ],
       "backend": [
         {
           "url_pattern": "/orders",
-          "host": ["http://store_manager:5000"],
+          "host": [
+            "http://store_manager:5000"
+          ],
           "timeout": "5s"
         }
       ]
@@ -37,11 +41,15 @@
     {
       "endpoint": "/store-manager-api/orders/{order_id}",
       "method": "DELETE",
-      "input_headers": ["*"],
+      "input_headers": [
+        "*"
+      ],
       "backend": [
         {
           "url_pattern": "/orders/{order_id}",
-          "host": ["http://store_manager:5000"],
+          "host": [
+            "http://store_manager:5000"
+          ],
           "timeout": "5s"
         }
       ]
@@ -49,11 +57,15 @@
     {
       "endpoint": "/store-manager-api/stocks",
       "method": "PUT",
-      "input_headers": ["*"],
+      "input_headers": [
+        "*"
+      ],
       "backend": [
         {
           "url_pattern": "/stocks",
-          "host": ["http://store_manager:5000"],
+          "host": [
+            "http://store_manager:5000"
+          ],
           "timeout": "5s"
         }
       ]
@@ -61,11 +73,15 @@
     {
       "endpoint": "/store-manager-api/orders/{order_id}",
       "method": "GET",
-      "input_headers": ["*"],
+      "input_headers": [
+        "*"
+      ],
       "backend": [
         {
           "url_pattern": "/orders/{order_id}",
-          "host": ["http://store_manager:5000"],
+          "host": [
+            "http://store_manager:5000"
+          ],
           "timeout": "5s"
         }
       ]
@@ -73,11 +89,15 @@
     {
       "endpoint": "/payments-api/payments",
       "method": "POST",
-      "input_headers": ["*"],
+      "input_headers": [
+        "*"
+      ],
       "backend": [
         {
           "url_pattern": "/payments",
-          "host": ["http://payments_api:5009"],
+          "host": [
+            "http://payments_api:5009"
+          ],
           "timeout": "5s"
         }
       ]
@@ -85,11 +105,63 @@
     {
       "endpoint": "/payments-api/payments/{payment_id}",
       "method": "POST",
-      "input_headers": ["*"],
+      "input_headers": [
+        "*"
+      ],
       "backend": [
         {
           "url_pattern": "/payments/process/{payment_id}",
-          "host": ["http://payments_api:5009"],
+          "host": [
+            "http://payments_api:5009"
+          ],
+          "timeout": "5s"
+        }
+      ]
+    },
+    {
+      "endpoint": "/store-manager-api/users",
+      "method": "POST",
+      "input_headers": [
+        "*"
+      ],
+      "backend": [
+        {
+          "url_pattern": "/users",
+          "host": [
+            "http://store_manager:5000"
+          ],
+          "timeout": "5s"
+        }
+      ]
+    },
+    {
+      "endpoint": "/store-manager-api/users/{user_id}",
+      "method": "DELETE",
+      "input_headers": [
+        "*"
+      ],
+      "backend": [
+        {
+          "url_pattern": "/users/{user_id}",
+          "host": [
+            "http://store_manager:5000"
+          ],
+          "timeout": "5s"
+        }
+      ]
+    },
+    {
+      "endpoint": "/store-manager-api/users/{user_id}",
+      "method": "GET",
+      "input_headers": [
+        "*"
+      ],
+      "backend": [
+        {
+          "url_pattern": "/users/{user_id}",
+          "host": [
+            "http://store_manager:5000"
+          ],
           "timeout": "5s"
         }
       ]

@@ -1,18 +1,38 @@
--- Create database 
+-- Create database
 CREATE DATABASE IF NOT EXISTS labo05_db;
 USE labo05_db;
 
--- Users table
+-- Drop tables in FK-safe order
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS stocks;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS user_types;
+DROP TABLE IF EXISTS products;
+
+-- User types table
+CREATE TABLE user_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(15) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO user_types (name) VALUES
+('Client'),
+('Employee'),
+('Manager');
+
+-- Users table
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    user_type_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_type_id) REFERENCES user_types(id) ON DELETE RESTRICT
 );
 
 -- Products table
-DROP TABLE IF EXISTS products;
 CREATE TABLE products (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
@@ -22,7 +42,6 @@ CREATE TABLE products (
 );
 
 -- Orders table
-DROP TABLE IF EXISTS orders;
 CREATE TABLE orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -34,7 +53,6 @@ CREATE TABLE orders (
 );
 
 -- Order items
-DROP TABLE IF EXISTS order_items;
 CREATE TABLE order_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INT NOT NULL,
@@ -45,8 +63,7 @@ CREATE TABLE order_items (
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
 );
 
--- Product stocks 
-DROP TABLE IF EXISTS stocks;
+-- Product stocks
 CREATE TABLE stocks (
     product_id INT PRIMARY KEY,
     quantity INT NOT NULL DEFAULT 0,
@@ -54,10 +71,12 @@ CREATE TABLE stocks (
 );
 
 -- Mock data: users
-INSERT INTO users (name, email) VALUES
-('Ada Lovelace', 'alovelace@example.com'),
-('Adele Goldberg', 'agoldberg@example.com'),
-('Alan Turing', 'aturing@example.com');
+INSERT INTO users (name, email, user_type_id) VALUES
+('Ada Lovelace', 'alovelace@example.com', 1),
+('Adele Goldberg', 'agoldberg@example.com', 1),
+('Alan Turing', 'aturing@example.com', 1),
+('Jane Doe', 'jdoe@magasinducoin.ca', 2),
+('Da Boss', 'dboss@magasinducoin.ca', 3);
 
 -- Mock data: products
 INSERT INTO products (name, sku, price) VALUES
@@ -74,5 +93,6 @@ INSERT INTO stocks (product_id, quantity) VALUES
 (4, 90);
 
 -- Indexes
+CREATE INDEX idx_users_user_type_id ON users (user_type_id);
 CREATE INDEX idx_stocks_product_id ON stocks (product_id);
 CREATE INDEX idx_order_items_product_id ON order_items (product_id);
