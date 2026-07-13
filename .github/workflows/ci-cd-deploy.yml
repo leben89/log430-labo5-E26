@@ -1,0 +1,214 @@
+name: CI/CD Deploy Labo 5 Store Manager
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy Store Manager on VM
+        shell: bash
+        run: |
+          set -e
+
+          DEPLOY_DIR="/home/runner/log430-labo7-deploy/log430-labo5-E26"
+          LABO7_DIR="/home/runner/log430-labo7-deploy/log430-labo7-emails"
+          OUTPUT_DIR="$LABO7_DIR/output"
+
+          echo "Préparation du dossier de déploiement..."
+          mkdir -p "$DEPLOY_DIR"
+
+          echo "Synchronisation du code..."
+          rsync -a --delete \
+            --exclude ".git" \
+            --exclude ".env" \
+            --exclude ".pytest_cache" \
+            --exclude "__pycache__" \
+            "$GITHUB_WORKSPACE"/ "$DEPLOY_DIR"/
+
+          cd "$DEPLOY_DIR"
+
+          echo "Création du fichier .env du labo 5..."
+          cat > .env <<'EOF'
+          DB_HOST=mysql
+          DB_PORT=3306
+          DB_USER=labo05
+          DB_PASSWORD=labo05
+          DB_NAME=labo05_db
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          REDIS_DB=0
+          KAFKA_HOST=kafka:9092
+          KAFKA_TOPIC=user-events
+          EOF
+
+          echo "Création du réseau Docker partagé..."
+          docker network create labo05-network || true
+
+          echo "Vérification de Kafka..."
+          if docker ps --format '{{.Names}}' | grep -q '^kafka$'; then
+            echo "Kafka est démarré."
+          elif docker ps -a --format '{{.Names}}' | grep -q '^kafka$'; then
+            echo "Kafka existe mais est arrêté. Démarrage..."
+            docker start kafka
+          else
+            echo "ERREUR: Kafka n'existe pas sur la VM."
+            echo "Exécute d'abord le workflow du labo 7 ou démarre Kafka manuellement."
+            exit 1
+          fi
+
+          echo "Vérification de Coolriel..."
+          if docker ps --format '{{.Names}}' | grep -q '^coolriel$'; then
+            echo "Coolriel est démarré."
+          elif docker ps -a --format '{{.Names}}' | grep -q '^coolriel$'; then
+            echo "Coolriel existe mais est arrêté. Démarrage..."
+            docker start coolriel
+          else
+            echo "ERREUR: Coolriel n'existe pas sur la VM."
+            echo "Exécute d'abord le workflow du labo 7."
+            exit 1
+          fi
+
+          echo "Démarrage des dépendances MySQL et Redis..."
+          docker-compose up -d mysql redis
+
+          echo "Build léger du Store Manager..."
+          docker-compose build store_manager
+
+          echo "Redémarrage du Store Manager..."
+          docker rm -f store_manager 2>/dev/null || true
+          docker-compose up -d --no-deps store_manager
+
+          echo "Attente du démarrage de Store Manager..."
+          for i in {1..30}; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/users/1 || true)
+            if [ "$HTTP_CODE" != "000" ]; then
+              echo "Store Manager répond avec HTTP $HTTP_CODE"
+              break
+            fi
+            echo "Store Manager pas encore prêt... tentative $i"
+            sleep 2
+          done
+
+          echo "Test E2E : création d'un utilisateur..."
+          TEST_EMAIL="client-ci-cd-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@example.com"
+
+          RESPONSE=$(curl -s -X POST http://localhost:5000/users \
+            -H "Content-Type: application/json" \
+            -d "{\"name\":\"Client CI CD Labo5\",\"email\":\"$TEST_EMAIL\",\"user_type_id\":1}")
+
+          echo "Réponse POST /users : $RESPONSE"
+
+          USER_ID=$(echo "$RESPONSE" | python3 -c 'import sys,json; data=json.load(sys.stdin); print(data.get("user_id",""))')
+
+          if [ -z "$USER_ID" ]; then
+            echo "ERREUR: impossible de récupérer user_id dans la réponse."
+            exit 1
+          fi
+
+          echo "Utilisateur créé avec ID: $USER_ID"
+
+          echo "Test E2E : suppression de l'utilisateur..."
+          DELETE_RESPONSE=$(curl -s -X DELETE http://localhost:5000/users/$USER_ID)
+          echo "Réponse DELETE /users/$USER_ID : $DELETE_RESPONSE"
+
+          echo "Attente de la génération des courriels par Coolriel..."
+          for i in {1..20}; do
+            if [ -f "$OUTPUT_DIR/welcome_${USER_ID}.html" ] && [ -f "$OUTPUT_DIR/goodbye_${USER_ID}.html" ]; then
+              echo "Courriels générés."
+              break
+            fi
+
+            echo "Courriels pas encore générés... tentative $i"
+            sleep 2
+          done
+
+          echo "Vérification des fichiers générés..."
+          test -f "$OUTPUT_DIR/welcome_${USER_ID}.html"
+          test -f "$OUTPUT_DIR/goodbye_${USER_ID}.html"
+
+          echo "Déploiement CI/CD validé de bout en bout pour l'utilisateur $USER_ID"
+
+          echo "État des conteneurs labo 5 :"
+          docker-compose ps
+
+          echo "Fichiers générés par Coolriel :"
+          ls -la "$OUTPUT_DIR"
+
+          echo "Logs Store Manager :"
+          docker logs --tail=80 store_manager || true
+
+          echo "Logs Coolriel :"
+          docker logs --tail=80 coolriel || true
+
+          echo "Espace disque restant :"
+          df -h
+
+
+
+
+
+# name: Deploy Store Manager Labo 5
+
+# on:
+#   push:
+#     branches: [ main ]
+#   workflow_dispatch:
+
+# jobs:
+#   deploy:
+#     runs-on: self-hosted
+
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+
+#       - name: Deploy Store Manager
+#         run: |
+#           set -e
+
+#           DEPLOY_DIR="/home/runner/log430-labo5-deploy/log430-labo5-E26"
+
+#           docker network create labo05-network 2>/dev/null || true
+
+#           if [ -d "$DEPLOY_DIR" ]; then
+#             cd "$DEPLOY_DIR"
+#             docker-compose down --remove-orphans || true
+
+#             docker run --rm \
+#               -v "$DEPLOY_DIR:/cleanup" \
+#               alpine:3.20 \
+#               sh -c "find /cleanup -type d -name __pycache__ -prune -exec rm -rf {} + && rm -rf /cleanup/.pytest_cache"
+#           fi
+
+#           mkdir -p "$DEPLOY_DIR"
+
+#           rsync -a --delete \
+#             --exclude='.git' \
+#             --exclude='__pycache__' \
+#             --exclude='.pytest_cache' \
+#             "$GITHUB_WORKSPACE/" "$DEPLOY_DIR/"
+
+#           cd "$DEPLOY_DIR"
+
+#           cat > .env <<'EOF'
+#           DB_HOST=mysql
+#           DB_PORT=3306
+#           DB_USER=labo05
+#           DB_PASSWORD=labo05
+#           DB_NAME=labo05_db
+#           REDIS_HOST=redis
+#           REDIS_PORT=6379
+#           REDIS_DB=0
+#           KAFKA_HOST="labo7-seulement!"
+#           EOF
+
+#           docker-compose up -d --build
